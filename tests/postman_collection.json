@@ -1,0 +1,422 @@
+{
+    "info": {
+        "name": "XOffencer Book Store - Create Book API",
+        "description": "API collection for creating and testing books in the XOffencer Book Store",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "1. Create Minimal Book (JSON)",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{jwt_token}}",
+                        "type": "text"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json",
+                        "type": "text"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"title\": \"Introduction to Python\",\n  \"isbn\": \"9788934927285\",\n  \"pages\": 320,\n  \"description\": \"A comprehensive guide to Python programming\",\n  \"publication_date\": \"2024-01-15\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/books/",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "books",
+                        ""
+                    ]
+                },
+                "description": "Create a simple book with only required fields"
+            },
+            "response": []
+        },
+        {
+            "name": "2. Create Book with Single Author",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{jwt_token}}",
+                        "type": "text"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json",
+                        "type": "text"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"title\": \"Data Science Fundamentals\",\n  \"isbn\": \"9781491934495\",\n  \"pages\": 450,\n  \"description\": \"Learn the foundations of data science with Python\",\n  \"publication_date\": \"2024-03-20\",\n  \"authors\": [\n    1\n  ],\n  \"publication\": 1,\n  \"categories\": [\n    1\n  ]\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/books/",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "books",
+                        ""
+                    ]
+                },
+                "description": "Create book with one author assigned"
+            },
+            "response": []
+        },
+        {
+            "name": "3. Create Book with Multiple Authors",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{jwt_token}}",
+                        "type": "text"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json",
+                        "type": "text"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"title\": \"Advanced JavaScript Patterns\",\n  \"isbn\": \"9781491952023\",\n  \"pages\": 256,\n  \"description\": \"Master JavaScript design patterns and best practices\",\n  \"publication_date\": \"2023-06-10\",\n  \"authors\": [\n    1,\n    2,\n    3\n  ],\n  \"publication\": 1,\n  \"categories\": [\n    2,\n    5\n  ]\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/books/",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "books",
+                        ""
+                    ]
+                },
+                "description": "Create book with multiple co-authors"
+            },
+            "response": []
+        },
+        {
+            "name": "4. Create Edited Book with Chapters",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{jwt_token}}",
+                        "type": "text"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json",
+                        "type": "text"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"title\": \"System Design Interview\",\n  \"isbn\": \"9781491954981\",\n  \"pages\": 512,\n  \"description\": \"Complete guide to preparing for system design interviews\",\n  \"publication_date\": \"2023-09-12\",\n  \"editors\": [\n    4,\n    5\n  ],\n  \"publication\": 2,\n  \"categories\": [\n    3,\n    6\n  ],\n  \"chapters\": \"[{\\\"title\\\": \\\"Scalability Fundamentals\\\", \\\"order\\\": 0, \\\"contributors\\\": [4, 6]}, {\\\"title\\\": \\\"Database Design Patterns\\\", \\\"order\\\": 1, \\\"contributors\\\": [5, 7]}]\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/books/",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "books",
+                        ""
+                    ]
+                },
+                "description": "Create edited book with chapters and chapter contributors"
+            },
+            "response": []
+        },
+        {
+            "name": "5. Create Book with Multiple Categories",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{jwt_token}}",
+                        "type": "text"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json",
+                        "type": "text"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"title\": \"Machine Learning for Production\",\n  \"isbn\": \"9781491954994\",\n  \"pages\": 600,\n  \"description\": \"Building and deploying ML models in production environments\",\n  \"publication_date\": \"2024-02-14\",\n  \"authors\": [\n    8,\n    9\n  ],\n  \"publication\": 3,\n  \"categories\": [\n    7,\n    8,\n    9\n  ]\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/books/",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "books",
+                        ""
+                    ]
+                },
+                "description": "Create book categorized under multiple categories"
+            },
+            "response": []
+        },
+        {
+            "name": "6. Create Book with Images (Form Data)",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{jwt_token}}",
+                        "type": "text"
+                    }
+                ],
+                "body": {
+                    "mode": "formdata",
+                    "formdata": [
+                        {
+                            "key": "title",
+                            "value": "Web Development Guide",
+                            "type": "text"
+                        },
+                        {
+                            "key": "isbn",
+                            "value": "9781111111111",
+                            "type": "text"
+                        },
+                        {
+                            "key": "pages",
+                            "value": "500",
+                            "type": "text"
+                        },
+                        {
+                            "key": "description",
+                            "value": "Complete web development guide covering frontend and backend",
+                            "type": "text"
+                        },
+                        {
+                            "key": "publication_date",
+                            "value": "2024-05-20",
+                            "type": "text"
+                        },
+                        {
+                            "key": "authors",
+                            "value": "10",
+                            "type": "text"
+                        },
+                        {
+                            "key": "publication",
+                            "value": "2",
+                            "type": "text"
+                        },
+                        {
+                            "key": "categories",
+                            "value": "4",
+                            "type": "text"
+                        },
+                        {
+                            "key": "image_count",
+                            "value": "1",
+                            "type": "text"
+                        },
+                        {
+                            "key": "image_0_title",
+                            "value": "Book Cover",
+                            "type": "text"
+                        },
+                        {
+                            "key": "image_0_file",
+                            "type": "file",
+                            "src": []
+                        }
+                    ]
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/books/",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "books",
+                        ""
+                    ]
+                },
+                "description": "Create book with image upload (multipart/form-data)"
+            },
+            "response": []
+        },
+        {
+            "name": "7. Test - Missing Required Field (Should Fail)",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{jwt_token}}",
+                        "type": "text"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json",
+                        "type": "text"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"title\": \"Test Book Without ISBN\",\n  \"pages\": 250,\n  \"description\": \"This should fail because ISBN is missing\",\n  \"publication_date\": \"2024-03-15\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/books/",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "books",
+                        ""
+                    ]
+                },
+                "description": "Test validation: missing required ISBN field - expect 400 error"
+            },
+            "response": []
+        },
+        {
+            "name": "8. Test - Duplicate ISBN (Should Fail)",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{jwt_token}}",
+                        "type": "text"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json",
+                        "type": "text"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"title\": \"Different Title\",\n  \"isbn\": \"9788934927285\",\n  \"pages\": 350,\n  \"description\": \"This should fail because ISBN already exists\",\n  \"publication_date\": \"2024-03-20\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/books/",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "books",
+                        ""
+                    ]
+                },
+                "description": "Test validation: duplicate ISBN - expect 400 error"
+            },
+            "response": []
+        },
+        {
+            "name": "9. Test - Invalid Author ID (Should Fail)",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{jwt_token}}",
+                        "type": "text"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json",
+                        "type": "text"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"title\": \"Book with Invalid Author\",\n  \"isbn\": \"9999999999999\",\n  \"pages\": 300,\n  \"description\": \"This should fail because author ID does not exist\",\n  \"publication_date\": \"2024-03-25\",\n  \"authors\": [\n    99999\n  ]\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/books/",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "books",
+                        ""
+                    ]
+                },
+                "description": "Test validation: non-existent author ID - expect 400 error"
+            },
+            "response": []
+        },
+        {
+            "name": "10. Test - Both Authors and Editors (Should Fail)",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{jwt_token}}",
+                        "type": "text"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json",
+                        "type": "text"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"title\": \"Book with Both Authors and Editors\",\n  \"isbn\": \"8888888888888\",\n  \"pages\": 400,\n  \"description\": \"This should fail because book cannot have both authors and editors\",\n  \"publication_date\": \"2024-04-01\",\n  \"authors\": [\n    1\n  ],\n  \"editors\": [\n    2\n  ]\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/books/",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "books",
+                        ""
+                    ]
+                },
+                "description": "Test validation: cannot have both authors and editors - expect error"
+            },
+            "response": []
+        }
+    ],
+    "variable": [
+        {
+            "key": "base_url",
+            "value": "http://localhost:8000",
+            "type": "string"
+        },
+        {
+            "key": "jwt_token",
+            "value": "your_jwt_token_here",
+            "type": "string"
+        }
+    ]
+}
