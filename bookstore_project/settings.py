@@ -95,9 +95,9 @@ WSGI_APPLICATION = 'bookstore_project.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': "xoffencer_bookstore", # The name for your database
-        'USER': 'root',                 # Your MariaDB username (usually 'root')
-        'PASSWORD': 'K@rtik@123', # The password you set during installation
+        'NAME': config("DB_NAME") or "xoffencer_bookstore", # The name for your database
+        'USER': config("DB_USER")or'root',                 # Your MariaDB username (usually 'root')
+        'PASSWORD': config("DB_PASS")or'K@rtik@123', # The password you set during installation
         'HOST': '127.0.0.1',            # Or 'localhost'
         'PORT': '3306',                 # The default MariaDB port
     }
