@@ -1,0 +1,28 @@
+# Django core
+Django==5.2.4
+
+# REST Framework
+djangorestframework
+djangorestframework-simplejwt
+
+# Authentication
+django-allauth
+dj-rest-auth
+
+# CORS
+django-cors-headers
+
+# Filtering
+django-filter
+
+# Database
+PyMySQL
+
+# Environment variables
+python-decouple
+
+# HTTP Requests (for Delhivery API)
+requests
+
+# Payment Gateway
+cashfree-pg
