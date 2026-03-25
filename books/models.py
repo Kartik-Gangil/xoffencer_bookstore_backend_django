@@ -88,18 +88,27 @@ class PaperQuality(models.Model):
     def __str__(self):
         return self.name
 
+class PrintingQuality(models.Model):
+    name = models.CharField(max_length=100, unique=True, help_text="e.g., Black & White, Grayscale, Full Color")
+    class Meta:
+        verbose_name_plural = "Printing qualities"
+    def __str__(self):
+        return self.name
+
 class PerPageRate(models.Model):
     paper_size = models.ForeignKey(PaperSize, on_delete=models.CASCADE)
     paper_quality = models.ForeignKey(PaperQuality, on_delete=models.CASCADE)
+    printing_quality = models.ForeignKey(PrintingQuality, on_delete=models.CASCADE, null=True, blank=True)
     thickness_mm = models.DecimalField(max_digits=4, decimal_places=2, default=0.1)
     rate = models.DecimalField(max_digits=5, decimal_places=2)
 
     class Meta:
-        # The combination of size and quality must be unique
-        unique_together = ('paper_size', 'paper_quality')
+        # The combination of size, paper quality, and printing quality must be unique
+        unique_together = ('paper_size', 'paper_quality', 'printing_quality')
 
     def __str__(self):
-        return f"{self.paper_size.name} ({self.paper_quality.name}) - {self.rate} per page"
+        printing = f", {self.printing_quality.name}" if self.printing_quality else ""
+        return f"{self.paper_size.name} ({self.paper_quality.name}{printing}) - {self.rate} per page"
 
 class BindingCost(models.Model):
     # ... (This model is correct and does not need changes)

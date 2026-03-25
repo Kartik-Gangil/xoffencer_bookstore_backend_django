@@ -7,7 +7,7 @@ from .models import (
     BookParticipant, Chapter, ChapterContribution,
     
     # Book Format & Pricing Models
-    BookFormat, BookImage, PaperSize, PaperQuality, PerPageRate, BindingCost, PricingRule,
+    BookFormat, BookImage, PaperSize, PaperQuality, PrintingQuality, PerPageRate, BindingCost, PricingRule,
     
     # Author History Model
     AuthorHistory,
@@ -103,6 +103,7 @@ admin.site.register(ChapterContribution)
 # Pricing and Format Models
 admin.site.register(PaperSize)
 admin.site.register(PaperQuality)
+admin.site.register(PrintingQuality)
 admin.site.register(PerPageRate)
 admin.site.register(BindingCost)
 admin.site.register(PricingRule)

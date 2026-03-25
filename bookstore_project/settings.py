@@ -29,7 +29,7 @@ SECRET_KEY = config("DJANGO_SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['13.235.229.202']
+ALLOWED_HOSTS = ['13.235.229.202' , '*']
 
 
 # Application definition
@@ -95,11 +95,11 @@ WSGI_APPLICATION = 'bookstore_project.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': config("DB_NAME") or "xoffencer_bookstore", # The name for your database
-        'USER': config("DB_USER")or'root',                 # Your MariaDB username (usually 'root')
-        'PASSWORD': config("DB_PASS")or'K@rtik@123', # The password you set during installation
-        'HOST': '127.0.0.1',            # Or 'localhost'
-        'PORT': '3306',                 # The default MariaDB port
+        'NAME': config("DB_NAME", default="xoffencer_bookstore"),
+        'USER': config("DB_USER", default="root"),
+        'PASSWORD': config("DB_PASS", default="K@rtik@123"),
+        'HOST': '127.0.0.1',
+        'PORT': '3306',
     }
 }
 
