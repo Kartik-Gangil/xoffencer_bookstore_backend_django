@@ -139,8 +139,8 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-#STATIC_URL = '/static/'
-#STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+##STATIC_URL = '/static/'
+##STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
@@ -280,9 +280,9 @@ CSRF_TRUSTED_ORIGINS = [
 
 
 # AWS S3 Settings for xoffencer
-AWS_ACCESS_KEY_ID = 'AKIARV7YU6DIN3ECJ252'
-AWS_SECRET_ACCESS_KEY = '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'  # <--- Yahan apni secret key dalein
-AWS_STORAGE_BUCKET_NAME = 'xoffencer-static-115948712144-ap-south-1-an'
+AWS_ACCESS_KEY_ID = ''
+AWS_SECRET_ACCESS_KEY = ''  # <--- Yahan apni secret key dalein
+AWS_STORAGE_BUCKET_NAME = ''
 AWS_S3_REGION_NAME = 'ap-south-1'
 AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
 
