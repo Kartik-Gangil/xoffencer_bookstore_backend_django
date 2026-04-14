@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     'users.apps.UsersConfig',
     'orders',
     'categories',
+    'storages',
 ]
 
 MIDDLEWARE = [
@@ -138,8 +139,8 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+#STATIC_URL = '/static/'
+#STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
@@ -270,3 +271,34 @@ WAREHOUSE_PINCODE = "474009"
 
 # Email address to send new author credentials to
 DEFAULT_CREDENTIALS_EMAIL = 'info@xoffencerpublication.in'
+
+
+CSRF_TRUSTED_ORIGINS = [
+    'https://xbookstore.xoffencerpublication.in',
+]
+
+
+
+# AWS S3 Settings for xoffencer
+AWS_ACCESS_KEY_ID = 'AKIARV7YU6DIN3ECJ252'
+AWS_SECRET_ACCESS_KEY = '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'  # <--- Yahan apni secret key dalein
+AWS_STORAGE_BUCKET_NAME = 'xoffencer-static-115948712144-ap-south-1-an'
+AWS_S3_REGION_NAME = 'ap-south-1'
+AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
+
+# Static & Media
+STATICFILES_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+
+# Naya format (Django 4.2/5.0+)
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+    },
+    "staticfiles": {
+        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+    },
+}
+
+STATIC_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/static/'
+MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
