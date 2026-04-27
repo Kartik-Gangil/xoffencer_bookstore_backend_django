@@ -170,6 +170,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5174", # The default port for Vite dev server
     "http://127.0.0.1:5173",
     "http://127.0.0.1:5174",
+    "http://admin.xoffencerpublication.in"
 ]
 
 REST_FRAMEWORK = {
