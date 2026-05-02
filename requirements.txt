@@ -26,3 +26,5 @@ requests
 
 # Payment Gateway
 cashfree-pg
+
+django-storages

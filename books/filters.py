@@ -27,6 +27,13 @@ class BookFilter(django_filters.FilterSet):
         method='filter_by_book_type',
         label='Book Type (Authored/Edited)'
     )
+    # --- Boolean Filter for Featured Flag ---
+    # Accepts true/false (or 1/0) via the query param `is_featured`
+    is_featured = django_filters.BooleanFilter(field_name='is_featured', label='Is Featured')
+    # Accepts true/false (or 1/0) via the query param `is_book_of_the_month`
+    is_book_of_the_month = django_filters.BooleanFilter(field_name='is_book_of_the_month', label='Is Book of the Month')
+    # Accepts true/false (or 1/0) via the query param `is_book_of_the_year`
+    is_book_of_the_year = django_filters.BooleanFilter(field_name='is_book_of_the_year', label='Is Book of the Year')
 
     class Meta:
         model = Book

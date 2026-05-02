@@ -335,20 +335,75 @@ class BookWriteSerializer(serializers.ModelSerializer):
             'authors', 'editors', 'categories', 'chapters', 'image_count'
         ]
 
+    def _normalize_categories(self, categories_input):
+        """Accept several input shapes for categories and return a list of Category instances.
+
+        Supported inputs:
+        - list of Category instances
+        - list of ints (ids)
+        - JSON string like "[1,2]"
+        - comma-separated string like "1,2"
+        """
+        if categories_input is None:
+            return []
+        # Already a list/tuple
+        if isinstance(categories_input, (list, tuple)):
+            ids = []
+            instances = []
+            for v in categories_input:
+                if isinstance(v, Category):
+                    instances.append(v)
+                elif isinstance(v, int):
+                    ids.append(v)
+                elif isinstance(v, str) and v.isdigit():
+                    ids.append(int(v))
+                else:
+                    # Try to parse nested JSON strings
+                    try:
+                        parsed = json.loads(v)
+                    except Exception:
+                        parsed = None
+                    if parsed is not None:
+                        return self._normalize_categories(parsed)
+            if ids:
+                instances.extend(list(Category.objects.filter(id__in=ids)))
+            return instances
+
+        # String input: JSON or comma-separated
+        if isinstance(categories_input, str):
+            s = categories_input.strip()
+            try:
+                parsed = json.loads(s)
+                return self._normalize_categories(parsed)
+            except Exception:
+                parts = [p.strip() for p in s.split(',') if p.strip()]
+                ids = [int(p) for p in parts if p.isdigit()]
+                return list(Category.objects.filter(id__in=ids))
+
+        # Fallback: return empty list
+        return []
+
     @transaction.atomic
     def create(self, validated_data):
         request = self.context.get('request')
         author_pks = [author.pk for author in validated_data.pop('authors', [])]
         editor_pks = [editor.pk for editor in validated_data.pop('editors', [])]
-        categories_data = validated_data.pop('categories', [])
+        # Use None so we can detect if the client explicitly provided the field
+        categories_data = validated_data.pop('categories', None)
+        # If serializer validation didn't produce a value (e.g., multipart form sent a string),
+        # fall back to raw request data if present.
+        if categories_data is None and request is not None and 'categories' in request.data:
+            categories_data = request.data.get('categories')
         chapters_str = validated_data.pop('chapters', '[]')
 
         image_count = validated_data.pop('image_count', 0)
         
         book = Book.objects.create(**validated_data)
 
-        if categories_data:
-            book.categories.set(categories_data)
+        # Normalize and apply categories if client provided them
+        if categories_data is not None:
+            normalized = self._normalize_categories(categories_data)
+            book.categories.set(normalized)
             
         if author_pks:
             # If authors are provided, they take priority. Create author participants.
@@ -418,7 +473,8 @@ class BookWriteSerializer(serializers.ModelSerializer):
 
 
         if categories_data is not None:
-            instance.categories.set(categories_data)
+            normalized = self._normalize_categories(categories_data)
+            instance.categories.set(normalized)
 
 
         if chapters_str is not None:
