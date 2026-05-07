@@ -122,9 +122,17 @@ class CreateFullAuthorView(APIView):
                 'email': email,
                 }
             try:
-                resp = requests.post(settings.AUTHOR_SHEET_SCRIPT_URL, json=payload, timeout=10)
-            except Exception:
-                pass
+                resp = requests.post(
+                    settings.AUTHOR_SHEET_SCRIPT_URL,
+                    data=payload,
+                    timeout=10
+                )
+
+                # print("status:", resp.status_code)
+                # print("body:", resp.text)
+
+            except Exception as e:
+                print("Google Sheet error:", str(e))
            
         except Exception as e:
             return Response({'error': f'An unexpected error occurred: {e}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
