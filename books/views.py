@@ -9,6 +9,7 @@ from django.db.models import Count # Add Count to your imports
 import random
 import string
 import time
+from decouple import config
 from django.utils import timezone
 from django.core.mail import send_mail
 from django.conf import settings # Import settings
@@ -16,6 +17,7 @@ from rest_framework import filters
 from django_filters.rest_framework import DjangoFilterBackend
 from .filters import BookFilter # <-- IMPORT OUR NEW FILTER CLASS
 from django.db.models import F, ExpressionWrapper, DecimalField, Sum 
+import requests
 
 
 # --- Model Imports ---
@@ -105,14 +107,28 @@ class CreateFullAuthorView(APIView):
             )
 
             # 7. Send the email with the correct, final credentials.
-            subject = f'New Author Account Created: {new_user.get_full_name()}'
-            message = (
-                f"Credentials for {new_user.get_full_name()}:\n\n"
-                f"USERNAME: {final_username}\n"
-                f"PASSWORD: {password}\n"
-            )
-            send_mail(subject, message, 'noreply@xoffencerbookstore.com', [settings.DEFAULT_CREDENTIALS_EMAIL], fail_silently=False)
+            # subject = f'New Author Account Created: {new_user.get_full_name()}'
+            # message = (
+            #     f"Credentials for {new_user.get_full_name()}:\n\n"
+            #     f"USERNAME: {final_username}\n"
+            #     f"PASSWORD: {password}\n"
+            # )
+            # send_mail(subject, message, 'noreply@xoffencerbookstore.com', [settings.DEFAULT_CREDENTIALS_EMAIL], fail_silently=False)
 
+            # or save info in the csv file
+            payload = {
+                'secret': settings.AUTHOR_SHEET_WEBHOOK_SECRET,
+                'username': final_username,
+                'password': password,
+                'email': email,
+                'first_name': first_name,
+                'last_name': last_name,
+                }
+            try:
+                resp = requests.post(settings.AUTHOR_SHEET_SCRIPT_URL, json=payload, timeout=5)
+            except Exception:
+                pass
+           
         except Exception as e:
             return Response({'error': f'An unexpected error occurred: {e}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
