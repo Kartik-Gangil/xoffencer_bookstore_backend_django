@@ -117,15 +117,12 @@ class CreateFullAuthorView(APIView):
 
             # or save info in the csv file
             payload = {
-                'secret': settings.AUTHOR_SHEET_WEBHOOK_SECRET,
                 'username': final_username,
                 'password': password,
                 'email': email,
-                'first_name': first_name,
-                'last_name': last_name,
                 }
             try:
-                resp = requests.post(settings.AUTHOR_SHEET_SCRIPT_URL, json=payload, timeout=5)
+                resp = requests.post(settings.AUTHOR_SHEET_SCRIPT_URL, json=payload, timeout=10)
             except Exception:
                 pass
            
