@@ -52,7 +52,7 @@ class AuthorHistory(models.Model):
     author = models.ForeignKey(Author, on_delete=models.CASCADE, related_name='history')
     bio = models.TextField(blank=True)
     designation = models.CharField(max_length=255)
-    department = models.CharField(max_length=255)
+    department = models.CharField(max_length=255 , null=True, blank=True)
     organization = models.CharField(max_length=255)
     start_date = models.DateField()
     end_date = models.DateField(null=True, blank=True, help_text="Leave blank for the current, active record.")
