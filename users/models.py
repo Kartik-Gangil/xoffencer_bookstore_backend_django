@@ -13,6 +13,8 @@ class CustomUser(AbstractUser):
     )
     
     # We extend the built-in User with new fields from your spreadsheet/screenshots
+    title = models.CharField(max_length=150, blank=True, null=True)
+    middle_name = models.CharField(max_length=150, blank=True, null=True)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="customer")
     designation = models.CharField(max_length=255, blank=True, null=True)
     department = models.CharField(max_length=255, blank=True, null=True)
