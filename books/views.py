@@ -55,10 +55,13 @@ class CreateFullAuthorView(APIView):
     @transaction.atomic
     def post(self, request, *args, **kwargs):
         # --- Get All Data from the request ---
+        title = request.data.get('title', '') # Optional field for the first history record
         first_name = request.data.get('first_name')
+        middle_name = request.data.get('middle_name', '')
         last_name = request.data.get('last_name')
         email = request.data.get('email', '') # Email is optional
         designation = request.data.get('designation')
+        department = request.data.get('department')
         organization = request.data.get('organization')
         bio = request.data.get('bio', '')
         image_file = request.FILES.get('image')
@@ -76,7 +79,7 @@ class CreateFullAuthorView(APIView):
             temp_username = f"temp_user_{int(time.time())}_{random.randint(1000, 9999)}"
             new_user = CustomUser.objects.create(
                 username=temp_username, email=email,
-                first_name=first_name, last_name=last_name, role='author'
+                first_name=first_name, last_name=last_name, role='author' , title=title , middle_name=middle_name
             )
 
             # 2. Create the Author profile, which will trigger your custom save()
@@ -101,6 +104,7 @@ class CreateFullAuthorView(APIView):
             AuthorHistory.objects.create(
                 author=new_author_profile,
                 designation=designation,
+                department=department,
                 organization=organization,
                 bio=bio,
                 start_date=timezone.now().date()

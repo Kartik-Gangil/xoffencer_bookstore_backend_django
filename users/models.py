@@ -15,6 +15,7 @@ class CustomUser(AbstractUser):
     # We extend the built-in User with new fields from your spreadsheet/screenshots
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="customer")
     designation = models.CharField(max_length=255, blank=True, null=True)
+    department = models.CharField(max_length=255, blank=True, null=True)
     university_organization = models.CharField(max_length=255, blank=True, null=True)
     bio = models.TextField(blank=True, null=True)
     profile_image_url = models.URLField(max_length=500, blank=True, null=True) # For author photo
