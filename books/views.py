@@ -481,10 +481,163 @@ class BookMetaView(APIView):
 
     #     return Response(data)
     
+    # def get(self, request, *args, **kwargs):
+
+    #     pages = request.GET.get('pages')
+    #     binding_type = request.GET.get('type')
+    #     publication_id = request.GET.get('publication')
+    #     author_id = request.GET.get('author')
+    #     language_id = request.GET.get('language')
+
+    #     paper_size_id = request.GET.get('paper_size')
+    #     paper_quality_id = request.GET.get('paper_quality')
+    #     printing_quality_id = request.GET.get('printing_quality')
+
+    #     binding_costs = BindingCost.objects.select_related(
+    #         'paper_size',
+    #         'paper_size__paper_size',
+    #         'paper_size__paper_quality',
+    #         'paper_size__printing_quality'
+    #     ).all()
+
+    #     publications = Publication.objects.all()
+    #     authors = Author.objects.all()
+    #     languages = Language.objects.all()
+
+
+    #     # binding type filter
+
+    #     if binding_type:
+    #         binding_costs = binding_costs.filter(
+    #             binding_type__iexact=binding_type
+    #         )
+
+
+    #     # page range filter
+
+    #     if pages:
+    #         try:
+
+    #             pages = int(pages)
+
+    #             binding_costs = binding_costs.filter(
+    #                 min_pages__lte=pages,
+    #                 max_pages__gte=pages
+    #             )
+
+    #         except ValueError:
+
+    #             return Response(
+    #                 {"error": "Invalid pages"},
+    #                 status=status.HTTP_400_BAD_REQUEST
+    #             )
+
+
+    #     # paper size filter
+
+    #     if paper_size_id:
+
+    #         binding_costs = binding_costs.filter(
+    #             paper_size__paper_size_id=paper_size_id
+    #         )
+
+
+    #     # paper quality filter
+
+    #     if paper_quality_id:
+
+    #         binding_costs = binding_costs.filter(
+    #             paper_size__paper_quality_id=paper_quality_id
+    #         )
+
+
+    #     # printing quality filter
+
+    #     if printing_quality_id:
+
+    #         binding_costs = binding_costs.filter(
+    #             paper_size__printing_quality_id=
+    #             printing_quality_id
+    #         )
+
+
+    #     if publication_id:
+    #         publications = publications.filter(
+    #             id=publication_id
+    #         )
+
+    #     if author_id:
+    #         authors = authors.filter(
+    #             id=author_id
+    #         )
+
+    #     if language_id:
+    #         languages = languages.filter(
+    #             id=language_id
+    #         )
+
+
+    #     binding_cost_output = []
+
+    #     for bc in binding_costs:
+
+    #         binding_cost_output.append({
+
+    #             "id": bc.id,
+
+    #             "binding_type": bc.binding_type,
+
+    #             "min_pages": bc.min_pages,
+
+    #             "max_pages": bc.max_pages,
+
+    #             "cost": bc.cost,
+
+    #             "paper_rate_id": bc.paper_size.id,
+
+    #             "paper_size":
+    #                 bc.paper_size.paper_size.name,
+
+    #             "paper_quality":
+    #                 bc.paper_size.paper_quality.name,
+
+    #             "printing_quality":
+    #                 bc.paper_size.printing_quality.name
+    #                 if bc.paper_size.printing_quality
+    #                 else None
+
+    #         })
+
+
+    #     return Response({
+
+    #         "binding_costs": binding_cost_output,
+
+    #         "publications":
+    #             PublicationSerializer(
+    #                 publications,
+    #                 many=True
+    #             ).data,
+
+    #         "authors":
+    #             AuthorSerializer(
+    #                 authors,
+    #                 many=True
+    #             ).data,
+
+    #         "languages":
+    #             LanguageSerializer(
+    #                 languages,
+    #                 many=True
+    #             ).data,
+
+    #     })
+    
     def get(self, request, *args, **kwargs):
 
         pages = request.GET.get('pages')
         binding_type = request.GET.get('type')
+
         publication_id = request.GET.get('publication')
         author_id = request.GET.get('author')
         language_id = request.GET.get('language')
@@ -493,29 +646,32 @@ class BookMetaView(APIView):
         paper_quality_id = request.GET.get('paper_quality')
         printing_quality_id = request.GET.get('printing_quality')
 
-        binding_costs = BindingCost.objects.select_related(
-            'paper_size',
-            'paper_size__paper_size',
-            'paper_size__paper_quality',
-            'paper_size__printing_quality'
-        ).all()
+        per_page_rates = PerPageRate.objects.all()
+
+        binding_costs = BindingCost.objects.all()
 
         publications = Publication.objects.all()
         authors = Author.objects.all()
         languages = Language.objects.all()
 
 
-        # binding type filter
+        # ----------------------
+        # Binding Type Filter
+        # ----------------------
 
         if binding_type:
+
             binding_costs = binding_costs.filter(
                 binding_type__iexact=binding_type
             )
 
 
-        # page range filter
+        # ----------------------
+        # Pages Filter
+        # ----------------------
 
         if pages:
+
             try:
 
                 pages = int(pages)
@@ -529,89 +685,103 @@ class BookMetaView(APIView):
 
                 return Response(
                     {"error": "Invalid pages"},
-                    status=status.HTTP_400_BAD_REQUEST
+                    status=400
                 )
 
 
-        # paper size filter
+        # Apply BindingCost -> PerPageRate mapping
+
+        if binding_type or pages:
+
+            per_page_rates = per_page_rates.filter(
+                id__in=binding_costs.values_list(
+                    "paper_size_id",
+                    flat=True
+                )
+            )
+
+
+        # ----------------------
+        # Paper Filters
+        # ----------------------
 
         if paper_size_id:
 
-            binding_costs = binding_costs.filter(
-                paper_size__paper_size_id=paper_size_id
+            per_page_rates = per_page_rates.filter(
+                paper_size_id=paper_size_id
             )
 
-
-        # paper quality filter
 
         if paper_quality_id:
 
-            binding_costs = binding_costs.filter(
-                paper_size__paper_quality_id=paper_quality_id
+            per_page_rates = per_page_rates.filter(
+                paper_quality_id=paper_quality_id
             )
 
-
-        # printing quality filter
 
         if printing_quality_id:
 
-            binding_costs = binding_costs.filter(
-                paper_size__printing_quality_id=
-                printing_quality_id
+            per_page_rates = per_page_rates.filter(
+                printing_quality_id=printing_quality_id
             )
 
 
+        # ----------------------
+        # Other Filters
+        # ----------------------
+
         if publication_id:
+
             publications = publications.filter(
                 id=publication_id
             )
 
+
         if author_id:
+
             authors = authors.filter(
                 id=author_id
             )
 
+
         if language_id:
+
             languages = languages.filter(
                 id=language_id
             )
 
 
-        binding_cost_output = []
+        # Return FULL PerPageRate data
 
-        for bc in binding_costs:
+        paper_rate_output = [
 
-            binding_cost_output.append({
+            {
 
-                "id": bc.id,
+                "id": p.id,
 
-                "binding_type": bc.binding_type,
+                "paper_size": p.paper_size.name,
 
-                "min_pages": bc.min_pages,
-
-                "max_pages": bc.max_pages,
-
-                "cost": bc.cost,
-
-                "paper_rate_id": bc.paper_size.id,
-
-                "paper_size":
-                    bc.paper_size.paper_size.name,
-
-                "paper_quality":
-                    bc.paper_size.paper_quality.name,
+                "paper_quality": p.paper_quality.name,
 
                 "printing_quality":
-                    bc.paper_size.printing_quality.name
-                    if bc.paper_size.printing_quality
-                    else None
+                    p.printing_quality.name
+                    if p.printing_quality
+                    else None,
 
-            })
+                "rate": p.rate,
+
+                "display_name": str(p)
+
+            }
+
+            for p in per_page_rates
+
+        ]
 
 
         return Response({
 
-            "binding_costs": binding_cost_output,
+            "paper_sizes": paper_rate_output,
 
             "publications":
                 PublicationSerializer(
@@ -632,6 +802,7 @@ class BookMetaView(APIView):
                 ).data,
 
         })
+    
 
 class AuthorDashboardView(APIView):
     """ Provides data for the logged-in author's dashboard. """
