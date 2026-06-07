@@ -115,7 +115,7 @@ class BindingCost(models.Model):
     # ... (This model is correct and does not need changes)
     binding_type = models.CharField(max_length=100)
     # quality_details = models.CharField(max_length=100, blank=True)
-    paper_size = models.ForeignKey(PerPageRate, on_delete=models.CASCADE)
+    paper_size = models.ForeignKey(PaperSize, on_delete=models.CASCADE)
     min_pages = models.PositiveIntegerField(default=1)
     max_pages = models.PositiveIntegerField()
     cost = models.DecimalField(max_digits=10, decimal_places=2)
