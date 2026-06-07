@@ -105,5 +105,19 @@ admin.site.register(PaperSize)
 admin.site.register(PaperQuality)
 admin.site.register(PrintingQuality)
 admin.site.register(PerPageRate)
-admin.site.register(BindingCost)
+
 admin.site.register(PricingRule)
+
+
+class BindingCostAdmin(admin.ModelAdmin):
+
+    list_display = (
+        "binding_type",
+        "paper_size",
+        "min_pages",
+        "max_pages",
+        "cost",
+    )
+
+
+admin.site.register(BindingCost, BindingCostAdmin)

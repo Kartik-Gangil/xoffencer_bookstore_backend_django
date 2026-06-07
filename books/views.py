@@ -397,18 +397,88 @@ class BookMetaView(APIView):
     """ Provides metadata for frontend forms (e.g., dropdown options). """
     permission_classes = [permissions.AllowAny]
     def get(self, request, *args, **kwargs):
+        pages = request.GET.get('pages')
+        binding_type = request.GET.get('type')
+        publication_id = request.GET.get('publication')
+        author_id = request.GET.get('author')
+        language_id = request.GET.get('language')
+        paper_size_id = request.GET.get('paper_size')
+
         paper_sizes = PerPageRate.objects.all()
-        paper_size_options = [{'id': ps.id, 'name': str(ps)} for ps in paper_sizes]
+        binding_costs = BindingCost.objects.all()
         publications = Publication.objects.all()
         authors = Author.objects.all()
         languages = Language.objects.all()
+        # print(PerPageRate.objects.count())
+
+        if binding_type:
+            binding_costs = binding_costs.filter(
+                binding_type__iexact=binding_type
+            )
+
+            # get all paper sizes linked with filtered binding costs
+            paper_sizes = paper_sizes.filter(
+                id__in=binding_costs.values_list(
+                    'paper_size_id',
+                    flat=True
+                )
+            ).distinct()
+
+        if pages:
+            try:
+                pages = int(pages)
+                binding_costs = binding_costs.filter(
+                min_pages__lte=pages,
+                max_pages__gte=pages
+            )
+                # get all paper sizes linked with those binding costs
+                paper_sizes = paper_sizes.filter(
+                    id__in=binding_costs.values_list(
+                        'paper_size_id',
+                        flat=True
+                    )
+                ).distinct()
+
+
+            except ValueError:
+                return Response(
+                    {'error': 'Invalid pages parameter'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        if publication_id:
+            publications = publications.filter(id=publication_id)
+
+        if author_id:
+            authors = authors.filter(id=author_id)
+
+        if language_id:
+            languages = languages.filter(id=language_id)
+
+        if paper_size_id:
+            paper_sizes = paper_sizes.filter(id=paper_size_id)
+            
+        paper_size_options = [{'id': ps.id, 'name': str(ps)} for ps in paper_sizes]
         data = {
+        
             'paper_sizes': paper_size_options,
-            'paper_sizes': PaperSizeSerializer(paper_sizes, many=True).data,
-            'publications': PublicationSerializer(publications, many=True).data,
-            'authors': AuthorSerializer(authors, many=True).data,
-            'languages': LanguageSerializer(languages, many=True).data,
+
+            'publications': PublicationSerializer(
+                publications,
+                many=True
+            ).data,
+
+            'authors': AuthorSerializer(
+                authors,
+                many=True
+            ).data,
+
+            'languages': LanguageSerializer(
+                languages,
+                many=True
+            ).data,
         }
+
         return Response(data)
 
 class AuthorDashboardView(APIView):
