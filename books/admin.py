@@ -101,7 +101,10 @@ admin.site.register(BookParticipant)
 admin.site.register(ChapterContribution)
 
 # Pricing and Format Models
-admin.site.register(PaperSize)
+#adding the length and width in the paper size admin
+@admin.register(PaperSize)
+class PaperSizeAdmin(admin.ModelAdmin):
+    list_display = ('name', 'length', 'width')
 admin.site.register(PaperQuality)
 admin.site.register(PrintingQuality)
 admin.site.register(PerPageRate)

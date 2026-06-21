@@ -5,7 +5,7 @@ class BookFilter(django_filters.FilterSet):
     # --- Text/ID Based Filters ---
     title = django_filters.CharFilter(field_name='title', lookup_expr='icontains')
     isbn = django_filters.CharFilter(field_name='isbn', lookup_expr='icontains')
-
+   
     # --- Relational Filters ---
     publication = django_filters.NumberFilter(field_name='publication__id')
     category = django_filters.NumberFilter(field_name='categories__id')
@@ -39,7 +39,7 @@ class BookFilter(django_filters.FilterSet):
         model = Book
         # List only the fields that are being used for exact matches or simple lookups
         fields = []
-
+   
     # --- Custom Filter Methods ---
     def filter_by_participant_name(self, queryset, name, value):
         # This allows searching for a book if any of its authors' or editors' names contain the value

@@ -99,8 +99,8 @@ DATABASES = {
         'NAME': config("DB_NAME", default="xoffencer_bookstore"),
         'USER': config("DB_USER", default="root"),
         'PASSWORD': config("DB_PASS", default="K@rtik@123"),
-        'HOST': '127.0.0.1',
-        'PORT': '3306',
+        'HOST': config("DB_HOST", default='127.0.0.1'),
+        'PORT': '3307',
     }
 }
 

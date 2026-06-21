@@ -19,6 +19,26 @@ from users.serializers import CustomUserDetailsSerializer, UserUpdateSerializer
 
 
 # --- Author Serializers ---
+
+# Create a brand new, stripped-down clone for the dropdown
+class AuthorHistoryDropdownSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AuthorHistory
+        fields = ['designation', 'organization'] # Banned 'bio', 'id', 'start_date', etc.
+        read_only_fields = fields
+
+class AuthorDropdownSerializer(serializers.ModelSerializer):
+    # This reads the 'label' string we calculated at the database level directly
+    label = serializers.CharField(read_only=True)
+    history = AuthorHistoryDropdownSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Author
+        # Banned 'user' object, 'orcid', and 'social_media_profile'
+        fields = ['id', 'author_id', 'image', 'label', 'history'] 
+        read_only_fields = fields
+
+
 class AuthorHistorySerializer(serializers.ModelSerializer):
     class Meta:
         model = AuthorHistory
@@ -229,6 +249,35 @@ class BookImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = BookImage
         fields = ['id', 'image', 'title', 'order']
+
+# ===================================================================
+#  Book Catalog Serializers 
+# kamm abhi bcha hai pura data fit krna hai from the sereliazer 
+# ===================================================================
+
+class BookCatalogSerializer(serializers.ModelSerializer):
+    publication_name = serializers.CharField(source='publication.name', read_only=True)
+    authors = serializers.CharField(source='Author', read_only=True)
+    cover_image = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Book
+        fields = ['cover_image', 'title', 'isbn', 'publication_name' , 'authors' , 'pages' , 'publication_date' , 'editors']
+
+    def get_cover_image(self, obj):
+        """
+        Reaches into the separate BookImage model relation.
+        Looks for an image with order=0 or falls back to the first available image.
+        """
+        # Option A: If your related_name on the BookImage model is 'images'
+        # Adjust 'images' to match your actual ForeignKey related_name (e.g., 'bookimage_set')
+        cover = obj.images.filter(order=0).first() or obj.images.first()
+        
+        if cover and cover.image:
+            # Returns the absolute URL string of the image file
+            return cover.image.url 
+        return None
+
 
 # ===================================================================
 #  New BookFormat Serializers

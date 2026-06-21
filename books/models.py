@@ -79,6 +79,8 @@ class Publication(models.Model):
 
 class PaperSize(models.Model):
     name = models.CharField(max_length=50, unique=True, help_text="e.g., A4, A5, 8x10")
+    length = models.DecimalField(max_digits=6, decimal_places=2, null=True,blank=True)
+    width = models.DecimalField(max_digits=6, decimal_places=2, null=True,blank=True)
     def __str__(self):
         return self.name
 

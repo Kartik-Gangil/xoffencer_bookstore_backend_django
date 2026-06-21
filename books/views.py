@@ -6,6 +6,10 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.db.models import Count # Add Count to your imports
+from django.db.models import Value # Add Count to your imports
+from django.db.models import Prefetch # Add Count to your imports
+from django.db.models.functions import Concat # Add Count to your imports
+from rest_framework.decorators import action
 import random
 import string
 import time
@@ -23,7 +27,7 @@ import requests
 # --- Model Imports ---
 from .models import (
     Book, Author, Publication, Review, 
-    PerPageRate, BindingCost, PricingRule, AuthorHistory, BookFormat, Language
+    PerPageRate, BindingCost, PricingRule, AuthorHistory, BookFormat, Language,PaperQuality,PrintingQuality, PaperSize, 
 )
 
 from orders.models import Order, OrderItem
@@ -32,10 +36,11 @@ from orders.models import Order, OrderItem
 from .serializers import (
     BookSerializer, BookWriteSerializer,
     AuthorSerializer, AuthorWriteSerializer,
+    AuthorDropdownSerializer,
     PublicationSerializer, PublicationWriteSerializer,
     OrderSerializer,
     ReviewSerializer, AdminReviewSerializer,
-    PaperSizeSerializer, AuthorCreateSerializer, BookFormatWriteSerializer, LanguageSerializer, BookFormatStockSerializer
+    PaperSizeSerializer, AuthorCreateSerializer, BookFormatWriteSerializer, LanguageSerializer, BookFormatSerializer , BookFormatStockSerializer , BookCatalogSerializer
 )
 # --- User-related Imports ---
 from users.models import CustomUser
@@ -166,6 +171,7 @@ class PublicPublicationViewSet(viewsets.ReadOnlyModelViewSet):
 # ===================================================================
 
 class BookViewSet(viewsets.ModelViewSet):
+   
     """ For Admins to manage Books (CRUD) and for Public to read. """
     queryset = Book.objects.all().order_by('-publication_date').prefetch_related(
         'publication', 
@@ -174,6 +180,36 @@ class BookViewSet(viewsets.ModelViewSet):
         'categories',
         'reviews'  # Prefetch reviews to avoid N+1 queries
     )
+    
+    
+    
+    @action(detail=True, methods=['get'], url_path='formats')
+    def get_book_formats(self, request, pk=None):
+        """
+        Target Endpoint: GET /api/books/<book_id>/formats/
+        Extracts format metrics alongside nested string mappings safely.
+        """
+        try:
+            book = self.get_object()
+           
+            # 2. Get the related formats queryset
+            formats_queryset = book.formats.all()
+             
+            book_pages = book.pages;
+            
+            # 3. Pass the data directly into your serializer
+            # (many=True handles the list iteration automatically!)
+            serializer = BookFormatSerializer(formats_queryset, many=True)
+            
+            # 4. Return the clean data structure directly to React
+            return Response({"format":serializer.data , "pages":book_pages}, status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            return Response({
+                'error': 'Book format retrieval configuration runtime error',
+                'details': str(e)
+            }, status=status.HTTP_404_NOT_FOUND)
+    
     
     parser_classes = [MultiPartParser, FormParser]
 
@@ -189,10 +225,12 @@ class BookViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:
             return BookWriteSerializer
+        # elif self.action == 'list':
+        #     return BookCatalogSerializer
         return BookSerializer
 
     def get_permissions(self):
-        if self.action in ['list', 'retrieve']:
+        if self.action in ['list', 'retrieve' , 'get_book_formats']:
             permission_classes = [permissions.AllowAny]
         else:
             # Assuming you have an IsAdminUser permission class
@@ -371,16 +409,30 @@ class PriceCalculationView(APIView):
     permission_classes = [permissions.AllowAny]
     def post(self, request, *args, **kwargs):
         # ... (This logic is correct and complete) ...
+        # print("--- INCOMING DATA FOR PRICING ---")
+        # print(request.data)
+        
         page_count = request.data.get('page_count')
         paper_size_id = request.data.get('paper_size_id')
+        paper_quality_name = request.data.get('paper_quality_name')
+        printing_quality_name = request.data.get('printing_quality_name')
         binding_type = request.data.get('binding_type')
         # binding_quality = request.data.get('binding_quality', '')
-        if not all([page_count, paper_size_id, binding_type]):
-            return Response({'error': 'Missing required fields'}, status=status.HTTP_400_BAD_REQUEST)
+        if not all([page_count, paper_size_id, paper_quality_name, printing_quality_name, binding_type]):
+            return Response({'error': 'Missing required configuration selections'}, status=status.HTTP_400_BAD_REQUEST)     
         try:
             page_count = int(page_count)
-            per_page_rate_obj = PerPageRate.objects.get(id=paper_size_id)
-            binding_cost_obj = BindingCost.objects.get(binding_type__iexact=binding_type, paper_size=per_page_rate_obj, min_pages__lte=page_count, max_pages__gte=page_count)
+        except (ValueError, TypeError):
+            return Response({'error': 'Invalid page_count format'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            per_page_rate_obj = PerPageRate.objects.get(paper_size_id=paper_size_id,
+                paper_quality__name=paper_quality_name,
+                printing_quality__name=printing_quality_name
+            )
+            binding_cost_obj = BindingCost.objects.get(binding_type__iexact=binding_type,
+            paper_size=per_page_rate_obj.paper_size, 
+            min_pages__lte=page_count,
+            max_pages__gte=page_count)
             pricing_rule = PricingRule.objects.first()
             if not pricing_rule: raise PricingRule.DoesNotExist
             production_cost = (page_count * per_page_rate_obj.rate) + binding_cost_obj.cost
@@ -632,177 +684,729 @@ class BookMetaView(APIView):
     #             ).data,
 
     #     })
+    # ************************************************
+    # def get(self, request, *args, **kwargs):
+
+    #     pages = request.GET.get('pages')
+    #     binding_type = request.GET.get('type')
+
+    #     publication_id = request.GET.get('publication')
+    #     author_id = request.GET.get('author')
+    #     language_id = request.GET.get('language')
+
+    #     paper_size_id = request.GET.get('paper_size')
+    #     paper_quality_id = request.GET.get('paper_quality')
+    #     printing_quality_id = request.GET.get('printing_quality')
+
+    #     per_page_rates = PerPageRate.objects.all()
+
+    #     binding_costs = BindingCost.objects.all()
+
+    #     publications = Publication.objects.all()
+    #     authors = Author.objects.all()
+    #     languages = Language.objects.all()
+
+
+    #     # ----------------------
+    #     # Binding Type Filter
+    #     # ----------------------
+
+    #     if binding_type:
+
+    #         binding_costs = binding_costs.filter(
+    #             binding_type__iexact=binding_type
+    #         )
+
+
+    #     # ----------------------
+    #     # Pages Filter
+    #     # ----------------------
+
+    #     if pages:
+
+    #         try:
+
+    #             pages = int(pages)
+
+    #             binding_costs = binding_costs.filter(
+    #                 min_pages__lte=pages,
+    #                 max_pages__gte=pages
+    #             )
+
+    #         except ValueError:
+
+    #             return Response(
+    #                 {"error": "Invalid pages"},
+    #                 status=400
+    #             )
+
+
+    #     # Apply BindingCost -> PerPageRate mapping
+
+    #     if binding_type or pages:
+
+    #         per_page_rates = per_page_rates.filter(
+    #             id__in=binding_costs.values_list(
+    #                 "paper_size_id",
+    #                 flat=True
+    #             )
+    #         )
+
+
+    #     # ----------------------
+    #     # Paper Filters
+    #     # ----------------------
+
+    #     if paper_size_id:
+
+    #         per_page_rates = per_page_rates.filter(
+    #             paper_size_id=paper_size_id
+    #         )
+
+
+    #     if paper_quality_id:
+
+    #         per_page_rates = per_page_rates.filter(
+    #             paper_quality_id=paper_quality_id
+    #         )
+
+
+    #     if printing_quality_id:
+
+    #         per_page_rates = per_page_rates.filter(
+    #             printing_quality_id=printing_quality_id
+    #         )
+
+
+    #     # ----------------------
+    #     # Other Filters
+    #     # ----------------------
+
+    #     if publication_id:
+
+    #         publications = publications.filter(
+    #             id=publication_id
+    #         )
+
+
+    #     if author_id:
+
+    #         authors = authors.filter(
+    #             id=author_id
+    #         )
+
+
+    #     if language_id:
+
+    #         languages = languages.filter(
+    #             id=language_id
+    #         )
+
+
+    #     # Return FULL PerPageRate data
+
+    #     paper_rate_output = [
+
+    #         {
+
+    #             "id": p.id,
+
+    #             "paper_size": p.paper_size.name,
+
+    #             "paper_quality": p.paper_quality.name,
+
+    #             "printing_quality":
+    #                 p.printing_quality.name
+    #                 if p.printing_quality
+    #                 else None,
+
+    #             "rate": p.rate,
+
+    #             "display_name": str(p)
+
+    #         }
+
+    #         for p in per_page_rates
+
+    #     ]
+
+
+    #     return Response({
+
+    #         "paper_sizes": paper_rate_output,
+
+    #         "publications":
+    #             PublicationSerializer(
+    #                 publications,
+    #                 many=True
+    #             ).data,
+
+    #         "authors":
+    #             AuthorSerializer(
+    #                 authors,
+    #                 many=True
+    #             ).data,
+
+    #         "languages":
+    #             LanguageSerializer(
+    #                 languages,
+    #                 many=True
+    #             ).data,
+
+    #     })
+    # ******************************************
+    # def get(self, request, *args, **kwargs):
+
+    #     paper_size_id = request.GET.get("paper_size")
+    #     paper_quality_id = request.GET.get("paper_quality")
+    #     printing_quality_id = request.GET.get("printing_quality")
+    #     binding_type = request.GET.get("type")
+    #     pages = request.GET.get("pages")
+
+    #     publication_id = request.GET.get("publication")
+    #     author_id = request.GET.get("author")
+    #     language_id = request.GET.get("language")
+
+    #     per_page_rates = PerPageRate.objects.select_related(
+    #         "paper_size",
+    #         "paper_quality",
+    #         "printing_quality"
+    #     ).all()
+
+    #     binding_costs = BindingCost.objects.all()
+
+    #     # -----------------------------------
+    #     # STEP 1 - Filter by Paper Size
+    #     # -----------------------------------
+
+    #     if paper_size_id:
+    #         per_page_rates = per_page_rates.filter(
+    #             paper_size_id=paper_size_id
+    #         )
+
+    #     # Available paper qualities after size selection
+    #     available_paper_qualities = PaperQuality.objects.filter(
+    #         id__in=per_page_rates.values_list(
+    #             "paper_quality_id",
+    #             flat=True
+    #         )
+    #     ).distinct()
+
+    #     # -----------------------------------
+    #     # STEP 2 - Filter by Paper Quality
+    #     # -----------------------------------
+
+    #     if paper_quality_id:
+    #         per_page_rates = per_page_rates.filter(
+    #             paper_quality_id=paper_quality_id
+    #         )
+
+    #     # Available printing qualities
+    #     available_printing_qualities = PrintingQuality.objects.filter(
+    #         id__in=per_page_rates.values_list(
+    #             "printing_quality_id",
+    #             flat=True
+    #         )
+    #     ).distinct()
+
+    #     # -----------------------------------
+    #     # STEP 3 - Filter by Printing Quality
+    #     # -----------------------------------
+
+    #     if printing_quality_id:
+    #         per_page_rates = per_page_rates.filter(
+    #             printing_quality_id=printing_quality_id
+    #         )
+
+    #     # -----------------------------------
+    #     # STEP 4 - Binding Types
+    #     # -----------------------------------
+
+    #     if paper_size_id:
+    #         binding_costs = binding_costs.filter(
+    #             paper_size_id=paper_size_id
+    #         )
+
+    #     available_binding_types = binding_costs.values(
+    #         "binding_type"
+    #     ).distinct()
+
+    #     if binding_type:
+    #         binding_costs = binding_costs.filter(
+    #             binding_type__iexact=binding_type
+    #         )
+
+    #     # -----------------------------------
+    #     # Pages Filter (Final Step)
+    #     # -----------------------------------
+
+    #     if pages:
+    #         try:
+    #             pages = int(pages)
+
+    #             binding_costs = binding_costs.filter(
+    #                 min_pages__lte=pages,
+    #                 max_pages__gte=pages
+    #             )
+
+    #         except ValueError:
+    #             return Response(
+    #                 {"error": "Invalid pages"},
+    #                 status=400
+    #             )
+
+    #     # -----------------------------------
+    #     # Output
+    #     # -----------------------------------
+
+    #     paper_rate_output = [
+    #         {
+    #             "id": p.id,
+    #             "paper_size": p.paper_size.name,
+    #             "paper_quality": p.paper_quality.name,
+    #             "printing_quality":
+    #                 p.printing_quality.name
+    #                 if p.printing_quality
+    #                 else None,
+    #             "rate": p.rate,
+    #             "display_name": str(p)
+    #         }
+    #         for p in per_page_rates
+    #     ]
+
+    #     return Response({
+
+    #         "paper_rates": paper_rate_output,
+
+    #         "paper_qualities": [
+    #             {
+    #                 "id": q.id,
+    #                 "name": q.name
+    #             }
+    #             for q in available_paper_qualities
+    #         ],
+
+    #         "printing_qualities": [
+    #             {
+    #                 "id": q.id,
+    #                 "name": q.name
+    #             }
+    #             for q in available_printing_qualities
+    #         ],
+
+    #         "binding_types": list(
+    #             available_binding_types
+    #         ),
+
+    #         "binding_costs": [
+    #             {
+    #                 "id": b.id,
+    #                 "binding_type": b.binding_type,
+    #                 "cost": b.cost,
+    #                 "min_pages": b.min_pages,
+    #                 "max_pages": b.max_pages
+    #             }
+    #             for b in binding_costs
+    #         ]
+    # })
     
-    def get(self, request, *args, **kwargs):
+    
+    # def get(self, request, *args, **kwargs):
 
-        pages = request.GET.get('pages')
-        binding_type = request.GET.get('type')
+    #     pages = request.GET.get("pages")
+    #     binding_type = request.GET.get("type")
 
-        publication_id = request.GET.get('publication')
-        author_id = request.GET.get('author')
-        language_id = request.GET.get('language')
+    #     publication_id = request.GET.get("publication")
+    #     author_id = request.GET.get("author")
+    #     language_id = request.GET.get("language")
 
-        paper_size_id = request.GET.get('paper_size')
-        paper_quality_id = request.GET.get('paper_quality')
-        printing_quality_id = request.GET.get('printing_quality')
+    #     paper_size_id = request.GET.get("paper_size")
+    #     paper_quality_id = request.GET.get("paper_quality")
+    #     printing_quality_id = request.GET.get("printing_quality")
 
-        per_page_rates = PerPageRate.objects.all()
+    #     per_page_rates = PerPageRate.objects.select_related(
+    #         "paper_size",
+    #         "paper_quality",
+    #         "printing_quality"
+    #     ).all()
 
-        binding_costs = BindingCost.objects.all()
+    #     binding_costs = BindingCost.objects.all()
 
-        publications = Publication.objects.all()
-        authors = Author.objects.all()
-        languages = Language.objects.all()
+    #     # Apply filters only for pricing calculation
+    #     if paper_size_id:
+    #         per_page_rates = per_page_rates.filter(
+    #             paper_size_id=paper_size_id
+    #         )
 
+    #     if paper_quality_id:
+    #         per_page_rates = per_page_rates.filter(
+    #             paper_quality_id=paper_quality_id
+    #         )
 
-        # ----------------------
-        # Binding Type Filter
-        # ----------------------
+    #     if printing_quality_id:
+    #         per_page_rates = per_page_rates.filter(
+    #             printing_quality_id=printing_quality_id
+    #         )
 
-        if binding_type:
+    #     if binding_type:
+    #         binding_costs = binding_costs.filter(
+    #             binding_type__iexact=binding_type
+    #         )
 
-            binding_costs = binding_costs.filter(
-                binding_type__iexact=binding_type
+    #     if pages:
+    #         try:
+    #             pages = int(pages)
+
+    #             binding_costs = binding_costs.filter(
+    #                 min_pages__lte=pages,
+    #                 max_pages__gte=pages
+    #             )
+
+    #         except ValueError:
+    #             return Response(
+    #                 {"error": "Invalid pages"},
+    #                 status=400
+    #             )
+
+    #     paper_rate_output = [
+    #         {
+    #             "id": p.id,
+    #             "paper_size": p.paper_size.name,
+    #             "paper_quality": p.paper_quality.name,
+    #             "printing_quality": (
+    #                 p.printing_quality.name
+    #                 if p.printing_quality
+    #                 else None
+    #             ),
+    #             "rate": p.rate,
+    #             "display_name": str(p)
+    #         }
+    #         for p in per_page_rates
+    #     ]
+
+    #     return Response({
+
+    #         # Dropdown Options
+    #         "paper_sizes": [
+    #             {
+    #                 "id": ps.id,
+    #                 "name": ps.name
+    #             }
+    #             for ps in PaperSize.objects.all()
+    #         ],
+
+    #         "paper_qualities": [
+    #             {
+    #                 "id": pq.id,
+    #                 "name": pq.name
+    #             }
+    #             for pq in PaperQuality.objects.all()
+    #         ],
+
+    #         "printing_qualities": [
+    #             {
+    #                 "id": pq.id,
+    #                 "name": pq.name
+    #             }
+    #             for pq in PrintingQuality.objects.all()
+    #         ],
+
+    #         "binding_types": list(
+    #             BindingCost.objects.values_list(
+    #                 "binding_type",
+    #                 flat=True
+    #             ).distinct()
+    #         ),
+
+    #         # Pricing Data
+    #         "paper_rates": paper_rate_output,
+
+    #         # Existing Data
+    #         "publications": PublicationSerializer(
+    #             Publication.objects.all(),
+    #             many=True
+    #         ).data,
+
+    #         "authors": AuthorSerializer(
+    #             Author.objects.all(),
+    #             many=True
+    #         ).data,
+
+    #         "languages": LanguageSerializer(
+    #             Language.objects.all(),
+    #             many=True
+    #         ).data,
+    # })
+    
+    # def get(self, request, *args, **kwargs):
+    #     # 1. Frontend inputs fetch karna
+    #     paper_size_id = request.GET.get('paper_size')          # Step 1: Book Size ID (Links to PerPageRate)
+    #     paper_quality_id = request.GET.get('paper_quality')    # Step 2: Paper Quality
+    #     printing_quality_id = request.GET.get('printing_quality') # Step 3: Printing Quality
+    #     binding_type = request.GET.get('binding_type')         # Step 4: Binding Type
+        
+    #     language_code = request.GET.get('language')              # Language Support
+    #     pages = request.GET.get('pages')                        # Pages count
+    #     manual_weight = request.GET.get('weight_grams')         # Manual weight input (grams)
+    #     quantity = request.GET.get('quantity', 1)              # Default quantity is 1
+
+    #     # Base QuerySets
+    #     per_page_rates = PerPageRate.objects.all()
+    #     binding_costs = BindingCost.objects.all()
+    #     languages = Language.objects.all()
+    #     publications = Publication.objects.all()
+    #     authors = Author.objects.all()
+
+    #     # Placeholders for auto-fetched data and stock
+    #     auto_dimensions = {"length_mm": None, "width_mm": None}
+    #     stock_status = {"available": True, "available_stock": 0}
+
+    #     # ----------------------------------------------------
+    #     # STEP 1 to 3: Paper Size, Quality & Printing Filters
+    #     # ----------------------------------------------------
+    #     if paper_size_id:
+    #         # Kyunki paper_size_id direct ID ho sakti hai ya string, we handle both safely
+    #         if paper_size_id.isdigit():
+    #             per_page_rates = per_page_rates.filter(paper_size_id=paper_size_id)
+    #         else:
+    #             per_page_rates = per_page_rates.filter(paper_size__name__iexact=paper_size_id)
+
+    #     if paper_quality_id:
+    #         per_page_rates = per_page_rates.filter(paper_quality_id=paper_quality_id)
+
+    #     if printing_quality_id:
+    #         per_page_rates = per_page_rates.filter(printing_quality_id=printing_quality_id)
+
+    #     # ----------------------------------------------------
+    #     # STEP 4: Binding Type & Dynamic Data Fetching from BookFormat
+    #     # ----------------------------------------------------
+    #     if binding_type:
+    #         binding_costs = binding_costs.filter(binding_type__iexact=binding_type)
+
+    #     if pages:
+    #         try:
+    #             pages = int(pages)
+    #             binding_costs = binding_costs.filter(
+    #                 min_pages__lte=pages,
+    #                 max_pages__gte=pages
+    #             )
+    #         except ValueError:
+    #             return Response({"error": "Invalid pages count"}, status=400)
+
+    #     # Bridge: Connect Binding Costs with PerPageRates
+    #     if binding_type or pages:
+    #         per_page_rates = per_page_rates.filter(
+    #             paper_size_id__in=binding_costs.values_list("paper_size_id", flat=True)
+    #         )
+
+    #     # ----------------------------------------------------
+    #     # AUTO-FETCH: Length, Width & Stock via BookFormat
+    #     # ----------------------------------------------------
+    #     try:
+    #         quantity = int(quantity)
+    #     except ValueError:
+    #         return Response({"error": "Quantity must be an integer"}, status=400)
+
+    #     # Agar hamesha specific format select ho chuka hai (via paper_size and binding_type)
+    #     if paper_size_id and paper_size_id.isdigit():
+    #         # BookFormat lookup matching your model fields
+    #         format_filter = {"paper_size_id": paper_size_id}
+    #         if binding_type:
+    #             format_filter["binding_type__iexact"] = binding_type
+    #         if language_code:
+    #             format_filter["language__code"] = language_code
+
+    #         matched_format = BookFormat.objects.filter(**format_filter).first()
+
+    #         if matched_format:
+    #             # Length and Width auto-fetch from model database fields
+    #             auto_dimensions["length_mm"] = matched_format.length_mm
+    #             auto_dimensions["width_mm"] = matched_format.width_mm
+                
+    #             # Stock Verification
+    #             stock_status["available_stock"] = matched_format.stock
+    #             if matched_format.stock < quantity:
+    #                 stock_status["available"] = False
+    #                 stock_status["message"] = f"Stock short! Only {matched_format.stock} items available."
+                
+    #             # Agar manual weight nahi diya, toh database wala weight automatic use ho jayega
+    #             if not manual_weight:
+    #                 manual_weight = matched_format.weight_grams
+
+    #     # ----------------------------------------------------
+    #     # Language & Other Meta Filters
+    #     # ----------------------------------------------------
+    #     if language_code:
+    #         languages = languages.filter(code=language_code)
+
+    #     # Manual Weight Fallback processing
+    #     processed_weight = None
+    #     if manual_weight:
+    #         try:
+    #             processed_weight = float(manual_weight)
+    #         except ValueError:
+    #             return Response({"error": "Weight must be a valid number"}, status=400)
+
+    #     # ----------------------------------------------------
+    #     # Final Formatting: Dynamic Binding Types Expansion (FIXED)
+    #     # ----------------------------------------------------
+    #     paper_rate_output = []
+        
+    #     for p in per_page_rates:
+    #         # Current paper size ke liye database se saare available binding entries nikalenge
+    #         available_bindings = binding_costs.filter(paper_size_id=p.paper_size_id)
+            
+    #         # Case 1: Agar frontend se specific binding_type manga hai, toh use mazeed filter kar lo
+    #         if binding_type:
+    #             available_bindings = available_bindings.filter(binding_type__iexact=binding_type)
+            
+    #         # Agar is paper size ke liye database me binding combinations exist karte hain
+    #         if available_bindings.exists():
+    #             for b in available_bindings:
+    #                 # NOTE: Agar aapke model me field ka naam 'price' ya 'rate' hai, toh 'cost' ki jagah wo likhein
+    #                 binding_cost_amount = getattr(b, 'cost', 0.00)
+                    
+    #                 # Har binding type ke liye alag se row append hogi
+    #                 paper_rate_output.append({
+    #                     "id": p.id,
+    #                     "paper_size": p.paper_size.name if p.paper_size else None,
+    #                     "paper_quality": p.paper_quality.name if p.paper_quality else None,
+    #                     "printing_quality": p.printing_quality.name if p.printing_quality else None,
+    #                     "binding_type": b.binding_type,              # Dynamics types (Paperback, Hardcover, etc.)
+    #                     "binding_cost": binding_cost_amount,          # Us binding ka specific cost
+    #                     "rate": p.rate,                               # Per page printing rate
+    #                     "display_name": f"{str(p)} ({b.binding_type}: Rs.{binding_cost_amount})"
+    #                 })
+    #         else:
+    #             # Case 2: Fallback - Agar kisi paper size ki koi binding config database me nahi hai
+    #             paper_rate_output.append({
+    #                 "id": p.id,
+    #                 "paper_size": p.paper_size.name if p.paper_size else None,
+    #                 "paper_quality": p.paper_quality.name if p.paper_quality else None,
+    #                 "printing_quality": p.printing_quality.name if p.printing_quality else None,
+    #                 "binding_type": binding_type if binding_type else "Not Configured",
+    #                 "binding_cost": 0.00,
+    #                 "rate": p.rate,
+    #                 "display_name": f"{str(p)} (No Binding Found)"
+    #             })
+
+    #     # ----------------------------------------------------
+    #     # Response Return Block
+    #     # ----------------------------------------------------
+    #     return Response({
+    #         "step_dimensions": auto_dimensions,         # Auto-fetched length_mm & width_mm from BookFormat
+    #         "weight_grams": processed_weight,           # DB format weight OR manual entry weight
+    #         "stock_status": stock_status,               # Live stock check from BookFormat model
+    #         "paper_rates_available": paper_rate_output, # Contains all binding types row-by-row
+    #         "languages": LanguageSerializer(languages, many=True).data,
+    #         "publications": PublicationSerializer(publications, many=True).data,
+    #         "authors": AuthorSerializer(authors, many=True).data,
+    #     })
+
+    def put(self , request , *args , **kwargs): # this api is to list all the authors 
+        try:
+            ordered_history = AuthorHistory.objects.order_by('-start_date').only(
+                'author_id', 'designation', 'organization'
             )
-
-
-        # ----------------------
-        # Pages Filter
-        # ----------------------
-
-        if pages:
-
-            try:
-
-                pages = int(pages)
-
-                binding_costs = binding_costs.filter(
-                    min_pages__lte=pages,
-                    max_pages__gte=pages
-                )
-
-            except ValueError:
-
-                return Response(
-                    {"error": "Invalid pages"},
-                    status=400
-                )
-
-
-        # Apply BindingCost -> PerPageRate mapping
-
-        if binding_type or pages:
-
-            per_page_rates = per_page_rates.filter(
-                id__in=binding_costs.values_list(
-                    "paper_size_id",
-                    flat=True
-                )
+            authors_qs = Author.objects.select_related('user').prefetch_related(
+                Prefetch('history', queryset=ordered_history)
+            ).annotate(
+                label=Concat('user__first_name', Value(' '), 'user__last_name')
+            ).only(
+                'id', 'author_id', 'image',
+                'user__first_name', 'user__last_name'
             )
-
-
-        # ----------------------
-        # Paper Filters
-        # ----------------------
-
-        if paper_size_id:
-
-            per_page_rates = per_page_rates.filter(
-                paper_size_id=paper_size_id
-            )
-
-
-        if paper_quality_id:
-
-            per_page_rates = per_page_rates.filter(
-                paper_quality_id=paper_quality_id
-            )
-
-
-        if printing_quality_id:
-
-            per_page_rates = per_page_rates.filter(
-                printing_quality_id=printing_quality_id
-            )
-
-
-        # ----------------------
-        # Other Filters
-        # ----------------------
-
-        if publication_id:
-
-            publications = publications.filter(
-                id=publication_id
-            )
-
-
-        if author_id:
-
-            authors = authors.filter(
-                id=author_id
-            )
-
-
-        if language_id:
-
-            languages = languages.filter(
-                id=language_id
-            )
-
-
-        # Return FULL PerPageRate data
-
-        paper_rate_output = [
-
-            {
-
-                "id": p.id,
-
-                "paper_size": p.paper_size.name,
-
-                "paper_quality": p.paper_quality.name,
-
-                "printing_quality":
-                    p.printing_quality.name
-                    if p.printing_quality
-                    else None,
-
-                "rate": p.rate,
-
-                "display_name": str(p)
-
+            
+            response_data = {
+                "allAuthors": AuthorDropdownSerializer(authors_qs, many=True).data, 
             }
 
-            for p in per_page_rates
+            return Response(response_data, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response(
+                {"error": "Something went wrong while fetching configuration metrics", "details": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
-        ]
 
+    def get(self, request, *args, **kwargs):
+        try:
+            # 1. OPTIMIZED AGGREGATIONS: Make the database return ONLY unique configurations
+            # This replaces your heavy in-memory loops completely!
+            paper_sizes_qs = PaperSize.objects.filter(
+                perpagerate__isnull=False
+            ).distinct().only('id', 'name', 'length', 'width')
 
-        return Response({
+            # If no rates exist, seamlessly fallback to all paper sizes at database level
+            if not paper_sizes_qs.exists():
+                paper_sizes_qs = PaperSize.objects.all().only('id', 'name', 'length', 'width')
 
-            "paper_sizes": paper_rate_output,
+            # Format paper sizes efficiently
+            paper_sizes = [
+                {
+                    "id": ps.id,
+                    "name": ps.name,
+                    "length_mm": float(ps.length) if ps.length else None,
+                    "width_mm": float(ps.width) if ps.width else None
+                }
+                for ps in paper_sizes_qs
+            ]
 
-            "publications":
-                PublicationSerializer(
-                    publications,
-                    many=True
-                ).data,
+            # Pull unique text qualities directly via SQL flat lists
+            paper_qualities = list(
+                PerPageRate.objects.filter(paper_quality__isnull=False)
+                .values_list('paper_quality__name', flat=True)
+                .distinct().order_by('paper_quality__name')
+            )
 
-            "authors":
-                AuthorSerializer(
-                    authors,
-                    many=True
-                ).data,
+            printing_qualities = list(
+                PerPageRate.objects.filter(printing_quality__isnull=False)
+                .values_list('printing_quality__name', flat=True)
+                .distinct().order_by('printing_quality__name')
+            )
 
-            "languages":
-                LanguageSerializer(
-                    languages,
-                    many=True
-                ).data,
+            binding_types = list(
+                BindingCost.objects.filter(binding_type__isnull=False)
+                .values_list('binding_type', flat=True)
+                .distinct().order_by('binding_type')
+            )
 
-        })
-    
+            # 2. OPTIMIZED CONFIGURATIONS: Add optimization to lookups (Adjust relations if your serializers use them!)
+            languages = Language.objects.all() 
+            publications = Publication.objects.all()
+
+            # 3. OPTIMIZED AUTHORS QUERY
+            # ordered_history = AuthorHistory.objects.order_by('-start_date').only(
+            #     'author_id', 'designation', 'organization'
+            # )
+            # authors_qs = Author.objects.select_related('user').prefetch_related(
+            #     Prefetch('history', queryset=ordered_history)
+            # ).annotate(
+            #     label=Concat('user__first_name', Value(' '), 'user__last_name')
+            # ).only(
+            #     'id', 'author_id', 'image',
+            #     'user__first_name', 'user__last_name'
+            # )
+
+            # 4. CONSTRUCT FINAL RESPONSE
+            response_data = {
+                "paper_sizes": paper_sizes,
+                "paper_qualities": paper_qualities,
+                "printing_qualities": printing_qualities,
+                "binding_types": binding_types,
+                "languages": LanguageSerializer(languages, many=True).data,
+                "publications": PublicationSerializer(publications, many=True).data,
+                # "allAuthors": AuthorDropdownSerializer(authors_qs, many=True).data, 
+            }
+
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response(
+                {"error": "Something went wrong while fetching configuration metrics", "details": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 class AuthorDashboardView(APIView):
     """ Provides data for the logged-in author's dashboard. """
