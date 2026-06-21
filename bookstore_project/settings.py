@@ -100,7 +100,7 @@ DATABASES = {
         'USER': config("DB_USER", default="root"),
         'PASSWORD': config("DB_PASS", default="K@rtik@123"),
         'HOST': config("DB_HOST", default='127.0.0.1'),
-        'PORT': '3307',
+        'PORT': config("DB_PORT", default='3307'),
     }
 }
 
