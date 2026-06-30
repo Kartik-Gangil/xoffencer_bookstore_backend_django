@@ -39,7 +39,7 @@ from .serializers import (
     AuthorDropdownSerializer,
     PublicationSerializer, PublicationWriteSerializer,
     OrderSerializer,
-    ReviewSerializer, AdminReviewSerializer,
+    ReviewSerializer, AdminReviewSerializer,BookListSerializer,
     PaperSizeSerializer, AuthorCreateSerializer, BookFormatWriteSerializer, LanguageSerializer, BookFormatSerializer , BookFormatStockSerializer , BookCatalogSerializer
 )
 # --- User-related Imports ---
@@ -173,14 +173,38 @@ class PublicPublicationViewSet(viewsets.ReadOnlyModelViewSet):
 class BookViewSet(viewsets.ModelViewSet):
    
     """ For Admins to manage Books (CRUD) and for Public to read. """
-    queryset = Book.objects.all().order_by('-publication_date').prefetch_related(
-        'publication', 
-        'bookparticipant_set__author__user', # <--- THIS IS THE CORRECT RELATIONSHIP NAME
-        'images',
-        'categories',
-        'reviews'  # Prefetch reviews to avoid N+1 queries
-    )
+    # queryset = Book.objects.all().order_by('-publication_date').prefetch_related(
+    #     'publication', 
+    #     'bookparticipant_set__author__user', # <--- THIS IS THE CORRECT RELATIONSHIP NAME
+    #     'images',
+    #     'categories',
+    #     'reviews'  # Prefetch reviews to avoid N+1 queries
+    # )
     
+    def get_queryset(self):
+
+        # Fast query for listing books
+        if self.action == "list":
+            return (
+                Book.objects
+                .prefetch_related("images")
+                .order_by("-publication_date")
+            )
+
+        # Detailed query for single book
+        return (
+            Book.objects
+            .prefetch_related(
+                "publication",
+                "images",
+                "categories",
+                "bookparticipant_set__author__user",
+                "reviews",
+                "chapters",
+                "formats",
+            )
+            .order_by("-publication_date")
+        )
     
     
     @action(detail=True, methods=['get'], url_path='formats')
@@ -223,10 +247,12 @@ class BookViewSet(viewsets.ModelViewSet):
         return {'request': self.request}
 
     def get_serializer_class(self):
-        if self.action in ['create', 'update', 'partial_update']:
+        if self.action == "list":
+            return BookListSerializer
+
+        if self.action in ["create", "update", "partial_update"]:
             return BookWriteSerializer
-        # elif self.action == 'list':
-        #     return BookCatalogSerializer
+
         return BookSerializer
 
     def get_permissions(self):

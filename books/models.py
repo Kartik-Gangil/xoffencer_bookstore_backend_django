@@ -289,6 +289,7 @@ class BookFormat(models.Model):
 class BookImage(models.Model):
     book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='images')
     image = models.ImageField(upload_to='book_additional_images/')
+    thumbnail = models.ImageField(upload_to="book_thumbnails/",blank=True,null=True)
     title = models.CharField(max_length=100)
     order = models.PositiveIntegerField(default=0)
     class Meta: ordering = ['order']

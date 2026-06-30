@@ -311,6 +311,39 @@ class LanguageSerializer(serializers.ModelSerializer):
         model = Language
         fields = ['id', 'name', 'code']
 
+from rest_framework import serializers
+from .models import Book
+
+class BookListSerializer(serializers.ModelSerializer):
+    cover_image = serializers.SerializerMethodField()
+    publication = serializers.CharField(source="publication.name")
+    rating = serializers.SerializerMethodField()
+    class Meta:
+        model = Book
+        fields = [
+            "id",
+            "title",
+            "publication",
+            "rating",
+            "cover_image",
+        ]
+
+    def get_cover_image(self, obj):
+        first_image = obj.images.first()
+        if first_image and first_image.image:
+            request = self.context.get("request")
+            if request:
+                return request.build_absolute_uri(first_image.image.url)
+            return first_image.image.url
+        return None
+    def get_rating(self, obj):
+        """Calculate average rating from approved reviews"""
+        approved_reviews = obj.reviews.filter(is_approved=True)
+        if approved_reviews.exists():
+            ratings = approved_reviews.values_list('rating', flat=True)
+            avg = sum(ratings) / len(ratings)
+            return round(avg, 2)
+        return None
 
 class BookSerializer(serializers.ModelSerializer):
     publication = PublicationSerializer(read_only=True)

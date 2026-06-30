@@ -46,6 +46,12 @@ class OrderViewSet(viewsets.ModelViewSet):
     # We set the base permission, but will override it for different actions
     permission_classes = [permissions.IsAuthenticated]
 
+    # def initial(self, request, *args, **kwargs):
+    #     print("=== REQUEST REACHED ===")
+    #     print("Headers:", request.headers)
+    #     print("Authorization:", request.META.get("HTTP_AUTHORIZATION"))
+    #     super().initial(request, *args, **kwargs)
+
     def get_queryset(self):
         """
         Determines which orders a user is allowed to see.
@@ -71,77 +77,101 @@ class OrderViewSet(viewsets.ModelViewSet):
             self.permission_classes = [IsAdminUser]
         return super().get_permissions()
 
-    @transaction.atomic # This ensures all database operations in this method are a single, safe transaction.
+    @transaction.atomic
     def create(self, request, *args, **kwargs):
         """
-        Handles POST requests to create a new order from the user's cart.
-        This method now includes inventory management.
+        Create an order from the authenticated user's cart.
+        Validates stock, decrements inventory, creates order items,
+        and clears the cart atomically.
         """
         try:
+            print(request.data)
             cart = Cart.objects.get(user=request.user)
-            cart_items = cart.items.all()
         except Cart.DoesNotExist:
-            return Response({'error': 'Shopping cart not found.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"error": "Shopping cart not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
-        if not cart_items:
-            return Response({'error': 'Your cart is empty.'}, status=status.HTTP_400_BAD_REQUEST)
+        cart_items = cart.items.select_related("book", "book__book")
 
-        # --- VALIDATE STOCK and PREPARE ORDER ITEMS ---
-        order_items_to_create = []
+        if not cart_items.exists():
+            return Response(
+                {"error": "Your cart is empty."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         total_amount = 0
+        order_items_data = []
 
+        # -----------------------------
+        # Validate stock & calculate total
+        # -----------------------------
         for item in cart_items:
-            # item is a CartItem. The actual product is item.book_format
-            book_format = item.book_format
-            
-            # 1. CRITICAL: Check if there is enough stock for the quantity requested
+            book_format = item.book
+
             if book_format.stock < item.quantity:
-                # If not enough stock, raise a validation error to stop the entire process
                 raise ValidationError(
-                    f"Not enough stock for '{book_format.book.title} ({book_format.format_name})'. "
-                    f"Only {book_format.stock} available, but you requested {item.quantity}."
+                    f"Not enough stock for "
+                    f"'{book_format.book.title} ({book_format.format_name})'. "
+                    f"Only {book_format.stock} available, "
+                    f"but you requested {item.quantity}."
                 )
-            
-            # Add this item's cost to the total amount
+
             total_amount += book_format.mrp * item.quantity
 
-            # Prepare the OrderItem for creation
-            order_items_to_create.append(
-                OrderItem(
-                    order=None, # The order doesn't exist yet, we'll set it later
-                    book_format=book_format, # Use the correct field: book_format
-                    quantity=item.quantity,
-                    price_at_purchase=book_format.mrp # Get the price from the format
-                )
-            )
-        
-        # --- CREATE THE ORDER ---
-        shipping_address = request.data.get('shipping_address', 'Address not provided')
+            order_items_data.append({
+                "book_format": book_format,
+                "quantity": item.quantity,
+                "price": book_format.mrp,
+            })
+
+        # -----------------------------
+        # Create Order
+        # -----------------------------
+        shipping_address = request.data.get(
+            "shipping_address",
+            "Address not provided",
+        )
+        payment_mode = request.data.get("payment_mode" , "cod")
+
         order = Order.objects.create(
             customer=request.user,
+            Payment_Methods=payment_mode,
             total_amount=total_amount,
-            shipping_address=shipping_address
+            shipping_address=shipping_address,
         )
 
-        # --- LINK OrderItems TO THE NEW ORDER and DECREMENT STOCK ---
-        for i, item_to_create in enumerate(order_items_to_create):
-            # Link the OrderItem to the order we just created
-            item_to_create.order = order
-            
-            # 2. CRITICAL: Decrement the stock for the purchased format
-            book_format = item_to_create.book_format
-            book_format.stock -= item_to_create.quantity
-            book_format.save(update_fields=['stock']) # Efficiently save only the 'stock' field
+        # -----------------------------
+        # Create OrderItems & update stock
+        # -----------------------------
+        order_items = []
 
-        # Create all OrderItems in a single, efficient database query
-        OrderItem.objects.bulk_create(order_items_to_create)
+        for data in order_items_data:
+            book_format = data["book_format"]
 
-        # --- CLEAR THE CART ---
-        cart.items.delete()
+            order_items.append(
+                OrderItem(
+                    order=order,
+                    book_format=book_format,
+                    quantity=data["quantity"],
+                    price_at_purchase=data["price"],
+                )
+            )
 
-        # Return the newly created order details
+            book_format.stock -= data["quantity"]
+            book_format.save(update_fields=["stock"])
+
+        OrderItem.objects.bulk_create(order_items)
+
+        # -----------------------------
+        # Clear Cart
+        # -----------------------------
+        cart.items.all().delete()
+
         serializer = self.get_serializer(order)
-        return Response(serializer.data, status=status.HTTP_21_CREATED)
+
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 class CartViewSet(viewsets.ViewSet):
     """

@@ -26,10 +26,10 @@ class CartSerializer(serializers.ModelSerializer):
 
 class OrderItemSerializer(serializers.ModelSerializer):
     # In the order history, we just need the book's title
-    book = serializers.StringRelatedField()
+    book_format = serializers.StringRelatedField()
     class Meta:
         model = OrderItem
-        fields = ['book', 'quantity', 'price_at_purchase']
+        fields = ['book_format', 'quantity', 'price_at_purchase']
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(source='orderitem_set', many=True, read_only=True)
@@ -38,7 +38,7 @@ class OrderSerializer(serializers.ModelSerializer):
         model = Order
         # Include all fields, including the new tracking fields
         fields = ['id', 'customer', 'created_at', 'total_amount', 'status', 
-                  'shipping_address', 'courier', 'tracking_id', 'items']
+                  'shipping_address', 'courier', 'tracking_id', 'items' , 'Payment_Methods']
 
 # --- Coupon Serializer ---
 

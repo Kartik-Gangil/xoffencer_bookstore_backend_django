@@ -32,14 +32,14 @@ class Order(models.Model):
     COURIER_CHOICES = (('delhivery', 'Delhivery'), ('dtdc', 'DTDC'), ('bluedart', 'Blue Dart'), ('other', 'Other'))
 
     customer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    books = models.ManyToManyField(Book, through='OrderItem')
+    books = models.ManyToManyField(BookFormat, through='OrderItem')
     created_at = models.DateTimeField(auto_now_add=True)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
     shipping_address = models.TextField(blank=True, null=True)
     courier = models.CharField(max_length=50, choices=COURIER_CHOICES, blank=True, null=True)
     tracking_id = models.CharField(max_length=100, blank=True, null=True)
-
+    Payment_Methods = models.CharField(max_length=100 , blank=True ,null=True )
     class Meta:
         ordering = ['-created_at']
 
@@ -48,7 +48,11 @@ class Order(models.Model):
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE)
-    book = models.ForeignKey(Book, on_delete=models.SET_NULL, null=True)
+    book_format = models.ForeignKey(
+        BookFormat,
+        on_delete=models.SET_NULL,
+        null=True
+    )
     quantity = models.PositiveIntegerField(default=1)
     price_at_purchase = models.DecimalField(max_digits=10, decimal_places=2)
 
